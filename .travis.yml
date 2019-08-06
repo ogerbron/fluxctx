@@ -1,0 +1,12 @@
+---
+language: python
+python: "2.7"
+
+before_install:  # Fake requirements.txt for python requirements installation
+  - echo > requirements.txt
+  - sudo apt-get update -qq
+  - sudo apt-get install shellcheck -qq
+
+script:
+  # Syntax check
+  - "shellcheck -e SC2086,SC2039 -s bash fluxctx"

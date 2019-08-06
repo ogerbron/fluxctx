@@ -1,0 +1,242 @@
+#!/bin/bash
+#
+# fluxctx(1) is a utility to manage and switch between flux deployments.
+
+# Copyright 2018 Olivier Gerbron
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[[ -n $DEBUG ]] && set -x
+
+set -eou pipefail
+IFS=$'\n\t'
+
+FLUXCONF="${HOME}/.config/flux"
+FLUXCTX="${FLUXCONF}/current_fluxctx"
+FLUXPREVCTX="${FLUXCONF}/previous_fluxctx"
+FLUXNS="flux"
+FLUXAPP="flux"
+
+# FORCE_RENAME="false"
+
+YELLOW=$(tput setaf 3)
+DARKBG=$(tput setab 0)
+NORMAL=$(tput sgr0)
+
+usage() {
+  cat <<"EOF"
+USAGE:
+  fluxctx                              : list the deployments
+  fluxctx <NAME>                       : switch to deployment <NAME>
+  fluxctx -                            : switch to the previous deployment
+  fluxctx -d <NAME>                    : delete deployment <NAME> ('.' for current-deployment)
+                                         (this command won't delete the user/cluster entry
+                                         that is used by the deployment)
+
+  fluxctx --get-alias                  : Display the alias to copy paste in your .bashrc or
+                                         equivalent
+
+  fluxctx -h,--help                    : show this message
+EOF
+  exit 1
+}
+
+current_deployment() {
+  cat ${FLUXCTX}
+}
+
+get_deployments() {
+  kubectl -n flux get deployments -l app=flux -o=jsonpath='{.items[*].metadata.labels.release}' | tr ' ' '\n'
+}
+
+list_deployments() {
+  set -u pipefail
+  local cur
+  cur="$(current_deployment)"
+
+  for c in $(get_deployments); do
+  if [[ -t 1 && "${c}" = "${cur}" ]]; then
+    echo "${DARKBG}${YELLOW}${c}${NORMAL}"
+  else
+    echo "${c}"
+  fi
+  done
+}
+
+read_previous_deployment() {
+  if [[ -f "${FLUXPREVCTX}" ]]; then
+    cat "${FLUXPREVCTX}"
+  fi
+}
+
+save_deployment() {
+  echo "export FLUX_FORWARD_NAMESPACE=${FLUXNS}" > "${FLUXCONF}/${1}"
+  echo "export FLUX_FORWARD_LABELS=\"app=${FLUXAPP},release=${1}\"" >> "${FLUXCONF}/${1}"
+}
+
+save_previous_deployment() {
+  echo "${1}" > ${FLUXPREVCTX}
+}
+
+switch_deployment() {
+  echo "${1}" > ${FLUXCTX}
+}
+
+set_deployment() {
+  local prev
+  prev="$(current_deployment)"
+
+  save_previous_deployment ${prev}
+  switch_deployment "${1}"
+  save_deployment "${1}"
+
+  if [[ "${prev}" != "${1}" ]]; then
+    save_deployment "${prev}"
+  fi
+  
+  echo "Activated [${1}]."
+}
+
+swap_deployment() {
+  local ctx
+  ctx="$(read_previous_deployment)"
+  if [[ -z "${ctx}" ]]; then
+    echo "error: No previous deployment found." >&2
+    exit 1
+  fi
+  set_deployment "${ctx}"
+}
+
+deployment_exists() {
+  local ret
+  if [ -f ${FLUXCONF}/${1} ]; then
+    ret=0
+  else
+    ret=1
+  fi
+  return ${ret}
+}
+
+# rename_deployment() {
+#   local old_name="${1}"
+#   local new_name="${2}"
+
+#   if [[ "${old_name}" == "." ]]; then
+#     old_name="$(current_deployment)"
+#   fi
+
+#   if deployment_exists "${new_name}"; then
+#     echo "Deployment name \"${new_name}\" already exists" >&2
+#     if [[ "${FORCE_RENAME}" == "true" ]]; then
+#       echo "Force renaming activated, removing former deployment \"${new_name}\"" >&2
+#       rm -f $FLUXCONF/${new_name}
+#     else
+#       echo "Force renaming deactivated, use -f/--force to remove the existing deployment" >&2
+#       echo "fluxctx -f/--force <NEW_NAME>=<NAME>" >&2
+#       exit 1
+#     fi
+#   fi
+#   mv $FLUXCONF/{"${old_name}","${new_name}"}
+#   echo "Renamed ${old_name} to ${DARKBG}${YELLOW}${new_name}${NORMAL}" >&2
+#   echo "${new_name}" > ${FLUXCTX}
+# }
+
+delete_deployment() {
+  local ctx
+  ctx="${1}"
+  if [[ "${ctx}" == "." ]]; then
+    ctx="$(current_deployment)"
+  fi
+  echo "Deleting deployment \"${ctx}\"..." >&2
+  rm -f ${FLUXCONF} "${ctx}"
+  echo "Deleted [${ctx}]."
+}
+
+main() {
+  if [ ! -d ${FLUXCONF} ]; then
+    mkdir -p ${FLUXCONF}
+  fi
+  
+  if [ ! -f ${FLUXCTX} ]; then
+    echo ${FLUXAPP} > ${FLUXCTX}
+    save_deployment ${FLUXAPP}
+  fi
+
+  if [[ "$#" -eq 0 ]]; then
+    list_deployments
+  fi
+
+  #Getting input args
+  while [[ $# -gt 0 ]]
+  do
+    case $1 in
+      --get-alias)
+        echo "alias fluxctl='FLUXCONF=${FLUXCONF}; FLUXCTX=${FLUXCTX}; . \${FLUXCONF}/\$(cat \${FLUXCTX}); fluxctl'"
+        break
+        ;;
+      --delete|-d)
+        shift
+        if [[ "$#" -lt 1 ]]; then
+          echo "error: missing deployment NAME" >&2
+          usage
+        elif [[ "$#" -gt 1 ]]; then
+          echo "error: too many arguments" >&2
+          usage
+        fi
+        delete_deployment "${1}"
+        break
+        ;;
+      # --force|-f)
+      #   shift
+      #   FORCE_RENAME="true"
+      #   if [[ "$#" -lt 1 ]]; then
+      #     echo "error: missing deployment NAME" >&2
+      #     usage
+      #   elif [[ "$#" -gt 1 ]]; then
+      #     echo "error: too many arguments" >&2
+      #     usage
+      #   fi
+      #   ;;
+      # *=*)
+      #   if [[ "${1}" =~ (.+)=(.+) ]]; then
+      #     rename_deployment "${BASH_REMATCH[2]}" "${BASH_REMATCH[1]}"
+      #   else
+      #     echo "Wrong syntax" >&2
+      #     usage
+      #   fi
+      #   break
+      #   ;;
+      -)
+        swap_deployment
+        break
+        ;;
+      -h|--help)
+        usage
+        break
+        ;;
+      -*)
+        echo "error: unrecognized flag \"${1}\"" >&2
+        usage
+        exit 1
+        ;;
+      *)
+        set_deployment "${1}"
+        break
+        ;;
+    esac
+  done
+
+  shift $((OPTIND - 1))
+}
+
+main "$@"

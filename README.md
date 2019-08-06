@@ -8,7 +8,7 @@ fluxctx (flux context) is a tool to easily manage and switch between several flu
 
 ## fluxctx how to
 
-To make fluxctx work, it is assumed that flux is deployed a kubernetes namespace named `flux`, and that it has the following labels:
+To make fluxctx work, it is assumed that flux is deployed in a kubernetes namespace named `flux`, and that it has the following labels:
 
 - app=`flux`
 - release=`another_name`

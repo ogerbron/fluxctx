@@ -26,6 +26,8 @@ FLUXCTX="${FLUXCONF}/current_fluxctx"
 FLUXPREVCTX="${FLUXCONF}/previous_fluxctx"
 FLUXNS="flux"
 FLUXAPP="flux"
+FLUXAPP_LABEL="app"
+FLUXRELEASE_LABEL="release"
 
 YELLOW=$(tput setaf 3)
 DARKBG=$(tput setab 0)
@@ -79,7 +81,7 @@ read_previous_deployment() {
 
 save_deployment() {
   echo "export FLUX_FORWARD_NAMESPACE=${FLUXNS}" > "${FLUXCONF}/${1}"
-  echo "export FLUX_FORWARD_LABELS=\"app=${FLUXAPP},release=${1}\"" >> "${FLUXCONF}/${1}"
+  echo "export FLUX_FORWARD_LABELS=\"${FLUXAPP_LABEL}=${FLUXAPP},${FLUXRELEASE_LABEL}=${1}\"" >> "${FLUXCONF}/${1}"
 }
 
 save_previous_deployment() {

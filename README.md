@@ -8,6 +8,24 @@ fluxctx (flux context) is a tool to easily manage and switch between several flu
 
 ## fluxctx how to
 
+To make fluxctx work, it is assumed that flux is deployed a kubernetes namespace named `flux`, and that it has the following labels:
+
+- app=`flux`
+- release=`another_name`
+
+Let's say you have two flux deployments in your kubernetes cluster, `flux1` and `flux2`. They will have the following labels:
+
+`flux1`: app=flux,release=flux1
+`flux2`: app=flux,release=flux2
+
+You can customize the namespace and the labels by overriding the following vars in the [fluxctx](./fluxctx) script:
+
+| Variable name       | Default   |
+|---------------------|:---------:|
+| `FLUXAPP_LABEL`     | `flux`    |
+| `FLUXNS`            | `flux`    |
+| `FLUXRELEASE_LABEL` | `release` |
+
 ```bash
 USAGE:
   fluxctx                              : list the deployments

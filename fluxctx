@@ -27,8 +27,6 @@ FLUXPREVCTX="${FLUXCONF}/previous_fluxctx"
 FLUXNS="flux"
 FLUXAPP="flux"
 
-# FORCE_RENAME="false"
-
 YELLOW=$(tput setaf 3)
 DARKBG=$(tput setab 0)
 NORMAL=$(tput sgr0)
@@ -127,30 +125,6 @@ deployment_exists() {
   return ${ret}
 }
 
-# rename_deployment() {
-#   local old_name="${1}"
-#   local new_name="${2}"
-
-#   if [[ "${old_name}" == "." ]]; then
-#     old_name="$(current_deployment)"
-#   fi
-
-#   if deployment_exists "${new_name}"; then
-#     echo "Deployment name \"${new_name}\" already exists" >&2
-#     if [[ "${FORCE_RENAME}" == "true" ]]; then
-#       echo "Force renaming activated, removing former deployment \"${new_name}\"" >&2
-#       rm -f $FLUXCONF/${new_name}
-#     else
-#       echo "Force renaming deactivated, use -f/--force to remove the existing deployment" >&2
-#       echo "fluxctx -f/--force <NEW_NAME>=<NAME>" >&2
-#       exit 1
-#     fi
-#   fi
-#   mv $FLUXCONF/{"${old_name}","${new_name}"}
-#   echo "Renamed ${old_name} to ${DARKBG}${YELLOW}${new_name}${NORMAL}" >&2
-#   echo "${new_name}" > ${FLUXCTX}
-# }
-
 delete_deployment() {
   local ctx
   ctx="${1}"
@@ -196,26 +170,6 @@ main() {
         delete_deployment "${1}"
         break
         ;;
-      # --force|-f)
-      #   shift
-      #   FORCE_RENAME="true"
-      #   if [[ "$#" -lt 1 ]]; then
-      #     echo "error: missing deployment NAME" >&2
-      #     usage
-      #   elif [[ "$#" -gt 1 ]]; then
-      #     echo "error: too many arguments" >&2
-      #     usage
-      #   fi
-      #   ;;
-      # *=*)
-      #   if [[ "${1}" =~ (.+)=(.+) ]]; then
-      #     rename_deployment "${BASH_REMATCH[2]}" "${BASH_REMATCH[1]}"
-      #   else
-      #     echo "Wrong syntax" >&2
-      #     usage
-      #   fi
-      #   break
-      #   ;;
       -)
         swap_deployment
         break

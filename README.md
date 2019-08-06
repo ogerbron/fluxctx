@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/ogerbron/fluxctx.svg?branch=master)](https://travis-ci.org/ogerbron/fluxctx/)
 
-fluxctx (flux context) is a tool to easily manage and switch between several flux deployment.
+fluxctx (flux context) is a tool to easily manage and switch between several flux deployment, when using fluxctl CLI.
 
 [Flux](https://github.com/fluxcd/flux) is a GitOps Kubernetes operator to automatically ensure that the state of a cluster matches the config in git.
 

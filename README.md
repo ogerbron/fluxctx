@@ -51,8 +51,8 @@ deployment2
 testing-deployment
 
 # Switch deployment
-$ fluxctx flux-testing-deployment
-Activated [flux-testing-environments].
+$ fluxctx testing-deployment
+Activated [testing-deployment].
 
 # Switch to previous deployment
 $ fluxctx -
